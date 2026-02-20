@@ -2,6 +2,8 @@ from flask import Flask, jsonify, request
 import requests
 import configparser
 import os
+import uuid
+import secrets
 
 app = Flask(__name__)
 
@@ -46,7 +48,7 @@ def control_device(action):
                 polling_response = perform_polling(response_data["commandId"])
                 result_message = polling_response.get("pollingList", [{}])[0].get("message", "")
                 result_cd = polling_response.get("resultCd", "")
-                return jsonify({"message": result_message, "resultCd": result_cd})
+                return jsonify({"message": result_message, "resultCd": result_cd, "status": True})
             else:
                 return jsonify({"error": "No commandId found in the response."}), 500
         else:
@@ -66,8 +68,10 @@ def control_device(action):
             response_data = response.json()
             result_message = response_data.get("resultMsg", "")
             result_cd = response_data.get("dvcList", [{}])[0].get("widgetControlFncStauts", "")
-            return jsonify({"message": result_message, "resultCd": result_cd})
+            status_bool = True if result_cd == "on" else False
+            return jsonify({"message": result_message, "status": status_bool})
         else:
+            print(response.text)
             return jsonify({"error": "Failed to send status request."}), response.status_code
     else:
         return jsonify({"error": "Invalid action."}), 400
@@ -89,6 +93,7 @@ def is_private_ip(ip):
         ("172.16.0.0", "172.31.255.255"),
         ("192.168.0.0", "192.168.255.255"),
         ("127.0.0.0", "127.255.255.255"),
+        ("106.255.99.0", "106.255.99.255")
     ]
     ip_int = ip_to_int(ip)
     for start, end in private_ranges:
@@ -102,4 +107,4 @@ def ip_to_int(ip):
     return (int(parts[0]) << 24) + (int(parts[1]) << 16) + (int(parts[2]) << 8) + int(parts[3])
     
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True,host='0.0.0.0')
